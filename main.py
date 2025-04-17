@@ -14,7 +14,7 @@ def main():
     args = parse_args()
     debug_mode = args.debug
 
-    logger.info("Starting Cat Sink Guard...")
+    logger.info("Starting Sink Snooper Stoppinator...")
     setup()
     cap = get_camera()
 
@@ -46,7 +46,7 @@ def main():
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Cat Sink Guard")
+    parser = argparse.ArgumentParser(description="Sink Snooper Stoppinator")
     parser.add_argument(
         "--debug", action="store_true", help="Enable debug webcam view with detection overlay"
     )
