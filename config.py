@@ -1,0 +1,3 @@
+CAT_CLASS_NAME: str = "cat"
+CONFIDENCE_THRESHOLD: float = 0.5
+DETERRENT_DURATION: float = 1.5  # Seconds
