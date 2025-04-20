@@ -1,8 +1,8 @@
 import cv2
 from pathlib import Path
 
-MODEL_PATH = "models/yolov8n.onnx"
-LABELS_PATH = "models/coco.names"
+MODEL_PATH = "assets/yolov8n.onnx"
+LABELS_PATH = "assets/coco.names"
 
 
 def load_class_names() -> dict[int, str]:
