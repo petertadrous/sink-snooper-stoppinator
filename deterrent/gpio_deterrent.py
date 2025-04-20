@@ -1,3 +1,5 @@
+from deterrent._deterrent import Deterrent
+
 from utils.logger import logger
 
 try:
@@ -11,35 +13,37 @@ except ImportError:
 PIN = 17  # GPIO pin
 
 
-def setup() -> None:
-    """
-    Sets up the GPIO pin for the deterrent.
-    """
-    if not IS_PI:
-        logger.debug("Skipping GPIO setup (not on Pi)")
-        return
-    GPIO.setmode(GPIO.BCM)  # type: ignore
-    GPIO.setup(PIN, GPIO.OUT)  # type: ignore
-    logger.debug("GPIO setup complete")
+class GpioDeterrent(Deterrent):
+    def __init__(self, pin: int = PIN) -> None:
+        self.pin = pin
 
+    def setup(self):
+        """
+        Sets up the GPIO pin for the deterrent.
+        """
+        if not IS_PI:
+            logger.debug("Skipping GPIO setup (not on Pi)")
+            return
+        GPIO.setmode(GPIO.BCM)  # type: ignore
+        GPIO.setup(self.pin, GPIO.OUT)  # type: ignore
+        logger.debug("GPIO setup complete")
 
-def activate_deterrent(duration: float = 1) -> None:
-    """
-    Activates the deterrent for the specified duration.
-    """
-    if not IS_PI:
-        logger.info(f"Simulated deterrent activated for {duration}s")
-        return
-    GPIO.output(PIN, GPIO.HIGH)  # type: ignore
-    time.sleep(duration)  # type: ignore
-    GPIO.output(PIN, GPIO.LOW)  # type: ignore
-    logger.debug(f"Deterrent activated for {duration}s")
+    def activate(self, duration: float) -> None:
+        """
+        Activates the deterrent for the specified duration.
+        """
+        if not IS_PI:
+            logger.info(f"Simulated deterrent activated for {duration}s")
+            return
+        GPIO.output(self.pin, GPIO.HIGH)  # type: ignore
+        time.sleep(duration)  # type: ignore
+        GPIO.output(self.pin, GPIO.LOW)  # type: ignore
+        logger.debug(f"Deterrent activated for {duration}s")
 
-
-def cleanup() -> None:
-    """
-    Cleans up the GPIO pin.
-    """
-    if IS_PI:
-        GPIO.cleanup()  # type: ignore
-        logger.debug("GPIO cleanup complete")
+    def cleanup(self) -> None:
+        """
+        Cleans up the GPIO pin.
+        """
+        if IS_PI:
+            GPIO.cleanup()  # type: ignore
+            logger.debug("GPIO cleanup complete")
