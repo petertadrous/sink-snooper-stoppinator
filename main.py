@@ -1,14 +1,28 @@
 import time
 import argparse
 import traceback
+from functools import partial
 
 import cv2
 
 from detection.detector import detect_cat, debug_draw
-from hardware.camera import get_camera, read_frame
-from hardware.deterrent import setup, activate_deterrent, cleanup
-from config import DETERRENT_DURATION, FREQUENCY, CAMERA_INDEX, DETECTION_HOLD_TIME
+from detection.camera import get_camera, read_frame
+from deterrent.gpio_deterrent import setup, activate_deterrent, cleanup
+from deterrent.audio_deterrent import play_audio
+from config import (
+    DETERRENT_DURATION,
+    FREQUENCY,
+    CAMERA_INDEX,
+    DETECTION_HOLD_TIME,
+    DETERRENT_TYPE,
+)
 from utils.logger import logger
+
+
+DETERRENT_MAP = {
+    "spray": activate_deterrent,
+    "gunshots": partial(play_audio, audio_name="gunshots"),
+}
 
 
 def main():
@@ -35,7 +49,8 @@ def main():
                 elif now - cat_detected_since >= DETECTION_HOLD_TIME:
                     if not deterrent_active:
                         deterrent_active = True
-                        activate_deterrent(DETERRENT_DURATION)
+                        logger.info(f"Deterrent activated for {DETERRENT_DURATION}s")
+                        DETERRENT_MAP[DETERRENT_TYPE](DETERRENT_DURATION)
                     else:
                         if now - cat_detected_since >= DETERRENT_DURATION:
                             cat_detected_since = None
