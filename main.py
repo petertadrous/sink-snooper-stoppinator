@@ -7,7 +7,7 @@ import cv2
 from detection.detector import detect_cat, debug_draw
 from hardware.camera import get_camera, read_frame
 from hardware.deterrent import setup, activate_deterrent, cleanup
-from config import DETERRENT_DURATION, FREQUENCY, CAMERA_INDEX
+from config import DETERRENT_DURATION, FREQUENCY, CAMERA_INDEX, DETECTION_HOLD_TIME
 from utils.logger import logger
 
 
@@ -19,13 +19,30 @@ def main():
     setup()
     cap = get_camera(index=CAMERA_INDEX)
 
+    # State
+    cat_detected_since = None
+    deterrent_active = False
+
     try:
         while True:
             frame = read_frame(cap)
             detection = detect_cat(frame, debug=debug_mode)
 
             if detection["detected"]:
-                activate_deterrent(DETERRENT_DURATION)
+                now = time.time()
+                if cat_detected_since is None:
+                    cat_detected_since = now
+                elif now - cat_detected_since >= DETECTION_HOLD_TIME:
+                    if not deterrent_active:
+                        deterrent_active = True
+                        activate_deterrent(DETERRENT_DURATION)
+                    else:
+                        if now - cat_detected_since >= DETERRENT_DURATION:
+                            cat_detected_since = None
+                            deterrent_active = False
+            else:
+                cat_detected_since = None
+                deterrent_active = False
 
             if debug_mode:
                 debug_draw(frame, detection)
