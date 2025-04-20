@@ -13,5 +13,7 @@ logger.add(
 
 # Errors and above -> stderr
 logger.add(
-    sys.stderr, level="ERROR", format="<red>{time:HH:mm:ss}</red> | <level>{message}</level>"
+    sys.stderr,
+    level="ERROR",
+    format="<red>{time:HH:mm:ss}</red> | <level>{message}</level>",
 )

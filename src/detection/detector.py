@@ -1,10 +1,8 @@
 import cv2
 import numpy as np
-
-from models.yolo_config import load_model, load_class_names, get_class_id
-from config import CONFIDENCE_THRESHOLD, SCORE_THRESHOLD, INTERESTED_CLASSES
-from utils.logger import logger
-
+from src.models.yolo_config import load_model, load_class_names, get_class_id
+from src.config import CONFIDENCE_THRESHOLD, SCORE_THRESHOLD, INTERESTED_CLASSES
+from src.utils.logger import logger
 
 model = load_model()
 CLASS_NAMES = load_class_names()
@@ -30,10 +28,10 @@ def detect_objects(
             }
     """
     height, width = frame.shape[:2]
-    # Create input blob and run inference
-    blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (height, width), swapRB=True, crop=False)
+    blob = cv2.dnn.blobFromImage(
+        frame, 1 / 255.0, (height, width), swapRB=True, crop=False
+    )
     model.setInput(blob)
-    # Transposed: shape (8400, 84) → (84, 8400) → transpose to (8400, 84)
     outputs = model.forward()[0].T
     boxes, confidences, class_ids = [], [], []
 
@@ -44,18 +42,18 @@ def detect_objects(
 
         if confidence > CONFIDENCE_THRESHOLD:
             cx, cy, w, h = detection[:4]
-
             x1 = int(cx - w / 2)
             y1 = int(cy - h / 2)
             x2 = int(cx + w / 2)
             y2 = int(cy + h / 2)
 
-            boxes.append([x1, y1, x2 - x1, y2 - y1])  # x, y, w, h
+            boxes.append([x1, y1, x2 - x1, y2 - y1])
             confidences.append(float(confidence))
             class_ids.append(class_id)
 
-    # Non-max suppression
-    indices = cv2.dnn.NMSBoxes(boxes, confidences, CONFIDENCE_THRESHOLD, SCORE_THRESHOLD)
+    indices = cv2.dnn.NMSBoxes(
+        boxes, confidences, CONFIDENCE_THRESHOLD, SCORE_THRESHOLD
+    )
 
     detections = []
     for i in indices:
@@ -63,8 +61,12 @@ def detect_objects(
         x, y, w, h = boxes[i]
         x1, y1, x2, y2 = x, y, x + w, y + h
 
-        label = CLASS_NAMES[class_ids[i]] if class_ids[i] < len(CLASS_NAMES) else "object"
-        logger.debug(f"Detected {label} (conf: {confidences[i]:.2f}) at {x1}, {y1}, {x2}, {y2}")
+        label = (
+            CLASS_NAMES[class_ids[i]] if class_ids[i] < len(CLASS_NAMES) else "object"
+        )
+        logger.debug(
+            f"Detected {label} (conf: {confidences[i]:.2f}) at {x1}, {y1}, {x2}, {y2}"
+        )
         detections.append(
             {
                 "bbox": (x1, y1, x2, y2),
@@ -107,9 +109,6 @@ def debug_draw(
     Args:
         frame: The original image to draw on.
         detections: List of detection dicts with 'bbox', 'label', and 'score'.
-        window_name: Window title for the display.
-        box_thickness: Thickness of the box outlines.
-        font_scale: Scale of the label text.
     """
     box_thickness: int = 2
     font_scale: float = 0.6
@@ -120,15 +119,22 @@ def debug_draw(
         label = det.get("label", "object")
         score = det.get("score", 0.0)
 
-        # Color: green for 'cat', light gray for others
         color = (0, 255, 0) if label in INTERESTED_CLASSES else (180, 180, 180)
-        # Draw rectangle
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, box_thickness)
 
-        # Prepare label text
         text = f"{label} ({score:.2f})"
-        (text_w, text_h), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)
-        cv2.rectangle(frame, (x1, y1 - text_h - 6), (x1 + text_w, y1), color, -1)  # background
-        cv2.putText(frame, text, (x1, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), 1)
+        (text_w, text_h), _ = cv2.getTextSize(
+            text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1
+        )
+        cv2.rectangle(frame, (x1, y1 - text_h - 6), (x1 + text_w, y1), color, -1)
+        cv2.putText(
+            frame,
+            text,
+            (x1, y1 - 4),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            font_scale,
+            (0, 0, 0),
+            1,
+        )
 
     cv2.imshow("Detection Debug View", frame)

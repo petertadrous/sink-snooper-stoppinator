@@ -1,6 +1,5 @@
-from deterrent._deterrent import Deterrent
-
-from utils.logger import logger
+from src.deterrent._deterrent import Deterrent
+from src.utils.logger import logger
 
 try:
     import RPi.GPIO as GPIO  # type: ignore

@@ -2,7 +2,9 @@ import cv2
 import numpy as np
 
 
-def letterbox_image(frame: cv2.typing.MatLike, input_size: int = 640, mode: str = "pad"):
+def letterbox_image(
+    frame: cv2.typing.MatLike, input_size: int = 640, mode: str = "pad"
+):
     """
     Resizes the image to fit into input_size x input_size.
 
@@ -19,7 +21,6 @@ def letterbox_image(frame: cv2.typing.MatLike, input_size: int = 640, mode: str 
     original_h, original_w = frame.shape[:2]
 
     if mode == "pad":
-        # Maintain aspect ratio and pad
         scale = min(input_size / original_w, input_size / original_h)
         new_w, new_h = int(original_w * scale), int(original_h * scale)
         resized = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
@@ -33,15 +34,17 @@ def letterbox_image(frame: cv2.typing.MatLike, input_size: int = 640, mode: str 
         return padded, scale, pad_w, pad_h
 
     elif mode == "crop":
-        # Resize the image so the smaller side == input_size
         scale = input_size / min(original_w, original_h)
         resized_w, resized_h = int(original_w * scale), int(original_h * scale)
-        resized = cv2.resize(frame, (resized_w, resized_h), interpolation=cv2.INTER_LINEAR)
+        resized = cv2.resize(
+            frame, (resized_w, resized_h), interpolation=cv2.INTER_LINEAR
+        )
 
-        # Center crop to input_size x input_size
         x_start = (resized_w - input_size) // 2
         y_start = (resized_h - input_size) // 2
-        cropped = resized[y_start : y_start + input_size, x_start : x_start + input_size]
+        cropped = resized[
+            y_start : y_start + input_size, x_start : x_start + input_size
+        ]
 
         return cropped, scale, 0, 0
 

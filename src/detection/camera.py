@@ -1,7 +1,8 @@
 import cv2
-from utils.logger import logger
-from config import PREPROCESS_MODE
-from detection.preprocessing import letterbox_image
+from src.utils.logger import logger
+from src.config import PREPROCESS_MODE
+from src.detection.preprocessing import letterbox_image
+
 
 def get_camera(index: int = 0) -> cv2.VideoCapture:
     """
@@ -29,5 +30,7 @@ def read_frame(
         raise RuntimeError("Failed to read from camera")
 
     if preprocess:
-        frame, _, _, _ = letterbox_image(frame, input_size=input_size, mode=PREPROCESS_MODE)
+        frame, _, _, _ = letterbox_image(
+            frame, input_size=input_size, mode=PREPROCESS_MODE
+        )
     return frame

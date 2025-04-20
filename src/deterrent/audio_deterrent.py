@@ -5,9 +5,9 @@ import traceback
 from pydub import AudioSegment
 from pydub.playback import play
 
-from utils.logger import logger
+from src.utils.logger import logger
 
-from deterrent._deterrent import Deterrent
+from src.deterrent._deterrent import Deterrent
 
 
 class AudioDeterrent(Deterrent):
@@ -15,7 +15,7 @@ class AudioDeterrent(Deterrent):
         self.audio_name = audio_name
 
     def setup(self):
-        if self.audio_name != "gunshots":
+        if self.audio_name == "gunshots":
             self.input_file = "assets/clean-machine-gun-burst-98224.mp3"
             self.audio: AudioSegment = AudioSegment.from_mp3(self.input_file)
             return
@@ -51,14 +51,14 @@ class AudioDeterrent(Deterrent):
         """
         Splices an audio segment and loops a segment for a specified number of times.
         """
-        segment: AudioSegment = audio[start_time:end_time]  # type: ignore
+        segment: AudioSegment = audio[start_time:end_time]  # type: ignore[misc]
         looped_segment: AudioSegment = segment
         for _ in range(loop_times - 1):
             if cross_fade is not None:
                 looped_segment = looped_segment.append(segment, crossfade=cross_fade)
             else:
                 looped_segment += segment
-        looped_segment += audio[end_time:]
+        looped_segment += audio[end_time:]  # type: ignore[misc]
 
         return looped_segment
 
@@ -67,18 +67,19 @@ class AudioDeterrent(Deterrent):
         Plays gunshot audio for a specified duration.
         Audio is free from https://pixabay.com/sound-effects/clean-machine-gun-burst-98224/
         """
-        audio = self.audio
-        original_duration = audio.duration_seconds
-        audio: AudioSegment = audio + AudioSegment.silent(duration=500)
+        base_audio = self.audio
+        original_duration = base_audio.duration_seconds
+        extended_audio: AudioSegment = base_audio + AudioSegment.silent(duration=500)
         if duration <= original_duration:
-            return audio
+            return extended_audio
         end_time = 1.43  # seconds
         tail_time = original_duration - end_time
-
         loop_times = int((duration - tail_time) / end_time)
-
         return self._splice_and_loop_mp3(
-            audio, start_time=0, end_time=end_time * 1000, loop_times=loop_times
+            extended_audio,
+            start_time=0,
+            end_time=end_time * 1000,
+            loop_times=loop_times,
         )
 
     def cleanup(self):

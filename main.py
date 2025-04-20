@@ -4,17 +4,17 @@ import traceback
 
 import cv2
 
-from detection.detector import detect_cat, debug_draw
-from detection.camera import get_camera, read_frame
-from deterrent import get_deterrent
-from config import (
+from src.detection.detector import detect_cat, debug_draw
+from src.detection.camera import get_camera, read_frame
+from src.deterrent import get_deterrent
+from src.config import (
     DETERRENT_DURATION,
     FREQUENCY,
     CAMERA_INDEX,
     DETECTION_HOLD_TIME,
     DETERRENT_TYPE,
 )
-from utils.logger import logger
+from src.utils.logger import logger
 
 
 def main():
@@ -75,7 +75,9 @@ def main():
 def parse_args():
     parser = argparse.ArgumentParser(description="Sink Snooper Stoppinator")
     parser.add_argument(
-        "--debug", action="store_true", help="Enable debug webcam view with detection overlay"
+        "--debug",
+        action="store_true",
+        help="Enable debug webcam view with detection overlay",
     )
     return parser.parse_args()
 
