@@ -1,0 +1,5 @@
+# Everything in this folder
+*
+# Except .gitignore and the code file
+!.gitignore
+!.yolo_config.py
