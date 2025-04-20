@@ -121,7 +121,7 @@ def debug_draw(
         score = det.get("score", 0.0)
 
         # Color: green for 'cat', light gray for others
-        color = (0, 255, 0) if label == "cat" else (180, 180, 180)
+        color = (0, 255, 0) if label in INTERESTED_CLASSES else (180, 180, 180)
         # Draw rectangle
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, box_thickness)
 
