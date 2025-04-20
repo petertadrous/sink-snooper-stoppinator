@@ -1,4 +1,3 @@
-import time
 import pytest
 from unittest.mock import patch, MagicMock
 from src.deterrent.speech_deterrent import SpeechDeterrent, SpeechProvider
@@ -50,13 +49,9 @@ def test_speech_deterrent_activate_basic(speech_deterrent):
         speech_deterrent.setup()
         speech_deterrent.activate(duration=1.5)
 
-        # Wait for thread to start and run
-        time.sleep(0.1)  # Short delay to let thread execute
-
-        mock_get_phrase.assert_called()
+        mock_get_phrase.assert_called_once()
         mock_engine.say.assert_called_with("mock_phrase")
-        # Wait for thread to finish
-        speech_deterrent.deterrent_thread.join(timeout=0.5)
+        mock_engine.iterate.assert_called_once()
 
 
 def test_speech_deterrent_cleanup(speech_deterrent):
@@ -113,13 +108,26 @@ def test_activate_creative(monkeypatch, creative_speech):
         creative_speech.prompt = "prompt"
         creative_speech.activate(1.0)
 
-        # Wait for thread to start and run
-        time.sleep(0.1)  # Short delay to let thread execute
-
-        mock_llm_inst.invoke.assert_called()
+        mock_llm_inst.invoke.assert_called_once()
         mock_engine.say.assert_called_with("creative response")
-        # Wait for thread to finish
-        creative_speech.deterrent_thread.join(timeout=0.5)
+        mock_engine.iterate.assert_called_once()
+
+
+def test_activate_creative_error(monkeypatch, creative_speech):
+    with (
+        patch("src.deterrent.speech_deterrent.pyttsx3.init") as mock_init,
+        patch("src.deterrent.speech_deterrent.OllamaLLM") as mock_llm,
+    ):
+        mock_engine = _mock_engine_with_voice()
+        mock_init.return_value = mock_engine
+        mock_llm_inst = MagicMock()
+        mock_llm_inst.invoke.side_effect = Exception("llm error")
+        mock_llm.return_value = mock_llm_inst
+        creative_speech.setup()
+        creative_speech.engine = mock_engine
+        creative_speech.llm = mock_llm_inst
+        creative_speech.prompt = "prompt"
+        creative_speech.activate(1.0)  # Should log error, not raise
 
 
 def test_activate_basic_error(monkeypatch, basic_speech):
@@ -128,12 +136,9 @@ def test_activate_basic_error(monkeypatch, basic_speech):
         mock_init.return_value = mock_engine
         basic_speech.setup()
         basic_speech.engine = mock_engine
-        basic_speech.provider = MagicMock()
-        basic_speech.provider.get_phrase.side_effect = Exception("fail")
-        basic_speech.activate(1.0)
-        # Wait for thread to start and run
-        time.sleep(0.1)
-        # Should log error, not raise
+        basic_speech.phrase_provider = MagicMock()
+        basic_speech.phrase_provider.get_phrase.side_effect = Exception("fail")
+        basic_speech.activate(1.0)  # Should log error, not raise
 
 
 def test_cleanup_error(monkeypatch, basic_speech):
