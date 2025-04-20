@@ -3,7 +3,7 @@ name = "sink-snooper-stoppinator"
 version = "0.1.0"
 description = "Code to stop my cat from playing in the sink"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "loguru>=0.7.3",
     "numpy>=2.2.4",
@@ -11,5 +11,8 @@ dependencies = [
     "onnxruntime>=1.21.0",
     "onnxslim>=0.1.50",
     "opencv-python>=4.11.0.86",
+    "pydub>=0.25.1",
+    "pyttsx3>=2.98",
+    "simpleaudio>=1.0.4",
     "ultralytics>=8.3.23",
 ]
