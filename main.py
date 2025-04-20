@@ -1,12 +1,13 @@
 import time
 import argparse
+import traceback
 
 import cv2
 
 from detection.detector import detect_cat, debug_draw
 from hardware.camera import get_camera, read_frame
 from hardware.deterrent import setup, activate_deterrent, cleanup
-from config import DETERRENT_DURATION
+from config import DETERRENT_DURATION, FREQUENCY, CAMERA_INDEX
 from utils.logger import logger
 
 
@@ -16,7 +17,7 @@ def main():
 
     logger.info("Starting Sink Snooper Stoppinator...")
     setup()
-    cap = get_camera()
+    cap = get_camera(index=CAMERA_INDEX)
 
     try:
         while True:
@@ -32,11 +33,12 @@ def main():
                     logger.info("Exiting debug mode")
                     break
 
-            time.sleep(0.5)
+            time.sleep(FREQUENCY)
     except KeyboardInterrupt:
         logger.info("Shutdown requested by user")
     except Exception as e:
         logger.error(f"Unhandled exception: {e}")
+        logger.error(traceback.format_exc())
     finally:
         cleanup()
         cap.release()

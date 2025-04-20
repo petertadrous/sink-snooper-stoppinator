@@ -1,6 +1,7 @@
 import cv2
 from utils.logger import logger
-
+from config import PREPROCESS_MODE
+from detection.preprocessing import letterbox_image
 
 def get_camera(index: int = 0) -> cv2.VideoCapture:
     """
@@ -15,7 +16,9 @@ def get_camera(index: int = 0) -> cv2.VideoCapture:
     return cap
 
 
-def read_frame(cap: cv2.VideoCapture) -> cv2.typing.MatLike:
+def read_frame(
+    cap: cv2.VideoCapture, input_size: int = 640, preprocess: bool = True
+) -> cv2.typing.MatLike:
     """
     Reads a frame from the specified cv2.VideoCapture object.
     If the frame cannot be read, raises a RuntimeError.
@@ -24,4 +27,7 @@ def read_frame(cap: cv2.VideoCapture) -> cv2.typing.MatLike:
     if not ret:
         logger.error("Failed to read from camera")
         raise RuntimeError("Failed to read from camera")
+
+    if preprocess:
+        frame, _, _, _ = letterbox_image(frame, input_size=input_size, mode=PREPROCESS_MODE)
     return frame
