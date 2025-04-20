@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 import random
-import math
+import threading
 from typing import Optional
 
 import pyttsx3
@@ -36,113 +36,108 @@ class SpeechProvider:
 class SpeechDeterrent(Deterrent):
     def __init__(
         self,
-        category: str = "any",
         creative: bool = False,
+        category: str = "any",
         voice: Optional[str] = "com.apple.voice.compact.en-US.Samantha",
     ) -> None:
-        self.category = category
-        self.creative = creative
+        self.engine: Optional[pyttsx3.Engine] = None
         self.llm = None
-        self.engine = None
-        self.provider = None
-        if voice:
-            self._voice_selection = voice
-        else:
-            self._voice_selection = "random"
+        self.creative = creative
+        self.phrase_provider = None
+        self.category = category
+        self.prompt = None
+        self.voice = voice
+        self.deterrent_thread: Optional[threading.Thread] = None
 
     def setup(self):
-        """
-        Initializes the SpeechDeterrent, including text-to-speech engine and optional LLM.
-        """
+        """Initialize text-to-speech engine and load needed resources."""
         try:
             self.engine = pyttsx3.init()
-            self.engine.setProperty("voice", self._select_voice())
-            # self.engine.setProperty("rate", 150)
-            self.provider = SpeechProvider(category=self.category)
-            self.engine.startLoop(False)
+            self._select_voice()  # Initialize with default voice
+            logger.debug("Speech engine initialized")
 
             if self.creative:
+                # Initialize LLM for creative mode
                 logger.debug("Using creative mode")
-                self.llm = OllamaLLM(model="HammerAI/openhermes-2.5-mistral")  # type: ignore
+                self.llm = OllamaLLM(model="HammerAI/openhermes-2.5-mistral")
                 with open("assets/creative_prompt.txt", "r") as f:
                     self.prompt = f.read()
+            else:
+                logger.debug("Using basic mode")
+                self.phrase_provider = SpeechProvider(category=self.category)
+
         except Exception as e:
             logger.error(f"Failed to initialize SpeechDeterrent: {e}")
             raise
 
-    def _select_voice(self):
-        """
-        Selects a suitable voice for the text-to-speech engine.
-        """
-        if self._voice_selection != "random":
-            return self._voice_selection
-        assert self.engine is not None, "Engine not initialized"
+    def _select_voice(self) -> str:
+        """Select a suitable voice for the text-to-speech engine."""
+        if not self.engine:
+            raise RuntimeError("Engine not initialized")
+
         voices = self.engine.getProperty("voices")
-        voices = [voice for voice in voices if "en_US" in voice.languages]
-        voices = [
-            voice
-            for voice in voices
-            if voice.gender in ["VoiceGenderMale", "VoiceGenderFemale"]
+
+        # If a specific voice is requested, try to use it
+        if self.voice:
+            for voice in voices:
+                if voice.id == self.voice:
+                    self.engine.setProperty("voice", voice.id)
+                    return voice.id
+
+        # Fall back to finding any English voice if specified voice not found
+        english_voices = [
+            v for v in voices if "en_US" in v.languages or "en-US" in v.languages
         ]
-        if not voices:
-            raise RuntimeError("No suitable voices found for en_US language.")
-        voice = random.choice(voices).id
-        logger.debug(f"Selected voice: {voice}")
-        return voice
 
-    def _activate_basic(self, duration: float) -> None:
-        """
-        Activates the basic deterrent mode by speaking phrases.
-        """
-        assert self.engine is not None, "Engine not initialized"
-        assert self.provider is not None, "Provider not initialized"
-        phrases_to_say = math.ceil(duration)
-        for _ in range(phrases_to_say):
-            try:
-                phrase = self.provider.get_phrase()
-                logger.debug(f"Phrase: {phrase}")
-                self.engine.say(phrase)
-                self.engine.iterate()
-            except Exception as e:
-                logger.error(f"Error during basic activation: {e}")
+        if not english_voices:
+            raise RuntimeError("No suitable English voices found")
 
-    def _activate_creative(self, duration: float):
-        """
-        Activates the creative deterrent mode using the LLM.
-        """
-        assert self.llm is not None, "LLM not initialized"
-        assert self.engine is not None, "Engine not initialized"
-        if not self.llm:
-            raise RuntimeError("LLM is not initialized for creative mode.")
+        selected_voice = english_voices[0]
+        self.engine.setProperty("voice", selected_voice.id)
+        return selected_voice.id
+
+    def _run_basic(self, duration: float):
+        """Run basic mode with predefined phrases."""
+        if self.phrase_provider is None:
+            raise RuntimeError("Phrase provider not initialized")
+        if not self.engine:
+            raise RuntimeError("Speech engine not initialized")
 
         try:
+            phrase = self.phrase_provider.get_phrase()
+            self.engine.say(phrase)
+            self.engine.runAndWait()
+        except Exception as e:
+            logger.error(f"Error during basic activation: {e}")
+
+    def _run_creative(self, duration: float):
+        """Run creative mode using LLM."""
+        try:
+            if not self.llm or not self.prompt or not self.engine:
+                raise RuntimeError("LLM components not initialized")
+
             response = self.llm.invoke(self.prompt)
             logger.debug(f"Response: {response}")
-            self.engine.say(response)
-            self.engine.iterate()
+            self.engine.say(str(response))
+            self.engine.runAndWait()
         except Exception as e:
             logger.error(f"Error during creative activation: {e}")
 
     def activate(self, duration: float):
-        """
-        Activates the deterrent for the specified duration.
-        """
-        try:
-            if self.creative:
-                self._activate_creative(duration)
-            else:
-                self._activate_basic(duration)
-        except Exception as e:
-            logger.error(f"Failed to activate SpeechDeterrent: {e}")
+        """Activates the deterrent for the specified duration."""
+        if self.creative:
+            target = self._run_creative
+        else:
+            target = self._run_basic
 
-    def cleanup(self) -> None:
-        """
-        Cleans up resources used by the SpeechDeterrent.
-        """
-        try:
-            if self.engine:
+        self.deterrent_thread = threading.Thread(target=target, args=(duration,))
+        self.deterrent_thread.daemon = True
+        self.deterrent_thread.start()
+
+    def cleanup(self):
+        if self.engine:
+            try:
                 self.engine.stop()
+            except Exception as e:
+                logger.error(f"Error during speech engine cleanup: {e}")
             self.engine = None
-            self.provider = None
-        except Exception as e:
-            logger.error(f"Error during cleanup: {e}")

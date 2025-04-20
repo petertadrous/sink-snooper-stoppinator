@@ -1,3 +1,4 @@
+import threading
 from typing import Optional
 
 import traceback
@@ -6,39 +7,51 @@ from pydub import AudioSegment
 from pydub.playback import play
 
 from src.utils.logger import logger
-
 from src.deterrent._deterrent import Deterrent
 
 
 class AudioDeterrent(Deterrent):
     def __init__(self, audio_name: str = "gunshots") -> None:
         self.audio_name = audio_name
+        self.audio: Optional[AudioSegment] = None
+        self.play_thread: Optional[threading.Thread] = None
 
     def setup(self):
         if self.audio_name == "gunshots":
             self.input_file = "assets/clean-machine-gun-burst-98224.mp3"
-            self.audio: AudioSegment = AudioSegment.from_mp3(self.input_file)
+            self.audio = AudioSegment.from_mp3(self.input_file)
             return
         raise ValueError(f"Unknown audio name: {self.audio_name}")
 
+    def _play_audio(self, audio: AudioSegment):
+        try:
+            play(audio)
+        except KeyboardInterrupt:
+            # Do nothing
+            pass
+        except Exception as e:
+            logger.error(f"Playback failed: {e}")
+            logger.debug(traceback.format_exc())
+
     def activate(self, duration: float) -> None:
         if self.audio_name == "gunshots":
+            if self.audio is None:
+                raise RuntimeError("Audio not initialized")
             audio = self._loop_gunshots(duration)
         else:
             raise ValueError(f"Unknown audio name: {self.audio_name}")
 
-        try:
-            logger.debug(f"Playing audio for {duration} seconds")
-            play(audio)
-        except KeyboardInterrupt:
-            # Do nothing
-            raise
-        except Exception as e:
-            logger.error(f"Playback failed: {e}")
-            logger.debug(traceback.format_exc())
-            raise e
-        else:
-            logger.debug("Playback finished successfully")
+        logger.debug(f"Playing audio for {duration} seconds")
+        # Start audio playback in a separate thread
+        self.play_thread = threading.Thread(target=self._play_audio, args=(audio,))
+        self.play_thread.daemon = True  # Thread will be killed when main program exits
+        self.play_thread.start()
+
+    def cleanup(self):
+        if self.play_thread and self.play_thread.is_alive():
+            # Can't really stop pydub playback, but clear the reference
+            self.play_thread = None
+        self.audio = None
 
     @staticmethod
     def _splice_and_loop_mp3(
@@ -64,23 +77,17 @@ class AudioDeterrent(Deterrent):
 
     def _loop_gunshots(self, duration: float = 1.5) -> AudioSegment:
         """
-        Plays gunshot audio for a specified duration.
+        Loops gunshot audio for a specified duration.
         Audio is free from https://pixabay.com/sound-effects/clean-machine-gun-burst-98224/
         """
-        base_audio = self.audio
-        original_duration = base_audio.duration_seconds
-        extended_audio: AudioSegment = base_audio + AudioSegment.silent(duration=500)
-        if duration <= original_duration:
-            return extended_audio
-        end_time = 1.43  # seconds
-        tail_time = original_duration - end_time
-        loop_times = int((duration - tail_time) / end_time)
-        return self._splice_and_loop_mp3(
-            extended_audio,
-            start_time=0,
-            end_time=end_time * 1000,
-            loop_times=loop_times,
-        )
+        if not self.audio:
+            raise RuntimeError("Audio not initialized")
 
-    def cleanup(self):
-        self.audio = None  # type: ignore
+        # Get audio length in milliseconds
+        audio_length = len(self.audio)
+        if audio_length == 0:
+            raise RuntimeError("Audio file has zero length")
+
+        # Calculate how many times to loop
+        loop_count = max(1, int((duration * 1000) / audio_length))
+        return self.audio * loop_count

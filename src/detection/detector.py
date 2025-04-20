@@ -102,33 +102,44 @@ def detect_cat(
 def debug_draw(
     frame: cv2.typing.MatLike,
     detections: dict,
-) -> None:
+    deterrent_active: bool = False,
+    show_preview: bool = True,
+) -> cv2.typing.MatLike:
     """
-    Draws detection bounding boxes and labels on the frame.
+    Draws detection bounding boxes, labels, and deterrent status on the frame.
 
     Args:
         frame: The original image to draw on.
         detections: List of detection dicts with 'bbox', 'label', and 'score'.
+        deterrent_active: Whether the deterrent is currently active.
+        show_preview: Whether to show the preview window.
+
+    Returns:
+        The annotated frame.
     """
+    annotated_frame = frame.copy()
     box_thickness: int = 2
     font_scale: float = 0.6
     detections = detections.get("detections", [])
 
+    # Draw detection boxes and labels
     for det in detections:
         x1, y1, x2, y2 = det["bbox"]
         label = det.get("label", "object")
         score = det.get("score", 0.0)
 
         color = (0, 255, 0) if label in INTERESTED_CLASSES else (180, 180, 180)
-        cv2.rectangle(frame, (x1, y1), (x2, y2), color, box_thickness)
+        cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, box_thickness)
 
         text = f"{label} ({score:.2f})"
         (text_w, text_h), _ = cv2.getTextSize(
             text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1
         )
-        cv2.rectangle(frame, (x1, y1 - text_h - 6), (x1 + text_w, y1), color, -1)
+        cv2.rectangle(
+            annotated_frame, (x1, y1 - text_h - 6), (x1 + text_w, y1), color, -1
+        )
         cv2.putText(
-            frame,
+            annotated_frame,
             text,
             (x1, y1 - 4),
             cv2.FONT_HERSHEY_SIMPLEX,
@@ -137,4 +148,37 @@ def debug_draw(
             1,
         )
 
-    cv2.imshow("Detection Debug View", frame)
+    # Draw deterrent status indicator
+    if deterrent_active:
+        status_text = "DETERRENT ACTIVE"
+        color = (0, 0, 255)  # Red for active deterrent
+    else:
+        status_text = "monitoring"
+        color = (255, 255, 255)  # White for normal monitoring
+
+    # Position at top-right corner
+    (text_w, text_h), _ = cv2.getTextSize(
+        status_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2
+    )
+    margin = 10
+    x = annotated_frame.shape[1] - text_w - margin
+    y = text_h + margin
+
+    # Draw status text with background
+    cv2.rectangle(
+        annotated_frame, (x - 5, y - text_h - 5), (x + text_w + 5, y + 5), color, -1
+    )
+    cv2.putText(
+        annotated_frame,
+        status_text,
+        (x, y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        font_scale,
+        (0, 0, 0),
+        2,
+    )
+
+    if show_preview:
+        cv2.imshow("Detection Debug View", annotated_frame)
+
+    return annotated_frame

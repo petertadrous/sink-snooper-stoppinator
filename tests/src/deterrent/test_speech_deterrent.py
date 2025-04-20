@@ -1,3 +1,4 @@
+import time
 import pytest
 from unittest.mock import patch, MagicMock
 from src.deterrent.speech_deterrent import SpeechDeterrent, SpeechProvider
@@ -5,17 +6,17 @@ from src.deterrent.speech_deterrent import SpeechDeterrent, SpeechProvider
 
 @pytest.fixture
 def speech_deterrent():
-    return SpeechDeterrent(category="any", creative=False)
+    return SpeechDeterrent(creative=False, category="any")
 
 
 @pytest.fixture
 def basic_speech():
-    return SpeechDeterrent(category="any", creative=False)
+    return SpeechDeterrent(creative=False, category="any")
 
 
 @pytest.fixture
 def creative_speech():
-    return SpeechDeterrent(category="any", creative=True)
+    return SpeechDeterrent(creative=True, category="any")
 
 
 def _mock_engine_with_voice():
@@ -48,8 +49,14 @@ def test_speech_deterrent_activate_basic(speech_deterrent):
         mock_init.return_value = mock_engine
         speech_deterrent.setup()
         speech_deterrent.activate(duration=1.5)
+
+        # Wait for thread to start and run
+        time.sleep(0.1)  # Short delay to let thread execute
+
         mock_get_phrase.assert_called()
         mock_engine.say.assert_called_with("mock_phrase")
+        # Wait for thread to finish
+        speech_deterrent.deterrent_thread.join(timeout=0.5)
 
 
 def test_speech_deterrent_cleanup(speech_deterrent):
@@ -64,7 +71,9 @@ def test_speech_deterrent_cleanup(speech_deterrent):
 def test_select_voice_success(monkeypatch, basic_speech):
     mock_engine = _mock_engine_with_voice()
     basic_speech.engine = mock_engine
-    assert basic_speech._select_voice() == "en_US_voice"
+    voice_id = basic_speech._select_voice()
+    assert voice_id == "en_US_voice"
+    mock_engine.setProperty.assert_called_with("voice", voice_id)
 
 
 def test_select_voice_failure(monkeypatch, basic_speech):
@@ -103,8 +112,14 @@ def test_activate_creative(monkeypatch, creative_speech):
         creative_speech.llm = mock_llm_inst
         creative_speech.prompt = "prompt"
         creative_speech.activate(1.0)
+
+        # Wait for thread to start and run
+        time.sleep(0.1)  # Short delay to let thread execute
+
         mock_llm_inst.invoke.assert_called()
         mock_engine.say.assert_called_with("creative response")
+        # Wait for thread to finish
+        creative_speech.deterrent_thread.join(timeout=0.5)
 
 
 def test_activate_basic_error(monkeypatch, basic_speech):
@@ -115,7 +130,10 @@ def test_activate_basic_error(monkeypatch, basic_speech):
         basic_speech.engine = mock_engine
         basic_speech.provider = MagicMock()
         basic_speech.provider.get_phrase.side_effect = Exception("fail")
-        basic_speech.activate(1.0)  # Should log error, not raise
+        basic_speech.activate(1.0)
+        # Wait for thread to start and run
+        time.sleep(0.1)
+        # Should log error, not raise
 
 
 def test_cleanup_error(monkeypatch, basic_speech):
@@ -138,3 +156,35 @@ def test_speech_provider_specific():
     p = SpeechProvider(category="asian")
     assert p.category == "asian"
     assert isinstance(p.get_phrase(), str)
+
+
+def test_select_specific_voice(monkeypatch):
+    speech = SpeechDeterrent(
+        creative=False,
+        category="any",
+        voice="com.apple.voice.compact.en-US.Samantha",
+    )
+    mock_engine = MagicMock()
+    mock_voice = MagicMock()
+    mock_voice.languages = ["en_US"]
+    mock_voice.id = "com.apple.voice.compact.en-US.Samantha"
+    mock_engine.getProperty.return_value = [mock_voice]
+    speech.engine = mock_engine
+
+    voice_id = speech._select_voice()
+    assert voice_id == "com.apple.voice.compact.en-US.Samantha"
+    mock_engine.setProperty.assert_called_with("voice", voice_id)
+
+
+def test_voice_fallback_when_not_found(monkeypatch):
+    speech = SpeechDeterrent(creative=False, category="any", voice="non.existent.voice")
+    mock_engine = MagicMock()
+    mock_voice = MagicMock()
+    mock_voice.languages = ["en_US"]
+    mock_voice.id = "en_US_voice"
+    mock_engine.getProperty.return_value = [mock_voice]
+    speech.engine = mock_engine
+
+    voice_id = speech._select_voice()
+    assert voice_id == "en_US_voice"  # Should fall back to available English voice
+    mock_engine.setProperty.assert_called_with("voice", voice_id)
