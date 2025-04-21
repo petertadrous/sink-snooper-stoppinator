@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import random
 from typing import Optional
+import traceback
 
 import pyttsx3
 from langchain_ollama import OllamaLLM
@@ -67,6 +68,7 @@ class SpeechDeterrent(Deterrent):
 
         except Exception as e:
             logger.error(f"Failed to initialize SpeechDeterrent: {e}")
+            self.cleanup()
             raise
 
     def _select_voice(self) -> str:
@@ -109,6 +111,9 @@ class SpeechDeterrent(Deterrent):
             self.engine.iterate()
         except Exception as e:
             logger.error(f"Error getting/speaking phrase: {e}")
+            logger.debug(traceback.format_exc())
+            self.cleanup()
+            raise
 
     def _run_creative(self, duration: float):
         """Run creative mode using LLM."""
@@ -122,6 +127,9 @@ class SpeechDeterrent(Deterrent):
             self.engine.iterate()
         except Exception as e:
             logger.error(f"Error getting/speaking creative response: {e}")
+            logger.debug(traceback.format_exc())
+            self.cleanup()
+            raise
 
     def activate(self, duration: float):
         """Activates the deterrent for the specified duration."""
@@ -139,4 +147,5 @@ class SpeechDeterrent(Deterrent):
                 self.engine.stop()
             except Exception as e:
                 logger.error(f"Error during speech engine cleanup: {e}")
+                logger.debug(traceback.format_exc())
             self.engine = None

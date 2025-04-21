@@ -127,7 +127,11 @@ def test_activate_creative_error(monkeypatch, creative_speech):
         creative_speech.engine = mock_engine
         creative_speech.llm = mock_llm_inst
         creative_speech.prompt = "prompt"
-        creative_speech.activate(1.0)  # Should log error, not raise
+        # This should log an error, and re-raise the exception
+        with pytest.raises(Exception, match="llm error"):
+            creative_speech.activate(1.0)
+        mock_llm_inst.invoke.assert_called_once()
+        # assert the log message contains the exception message
 
 
 def test_activate_basic_error(monkeypatch, basic_speech):
@@ -138,7 +142,10 @@ def test_activate_basic_error(monkeypatch, basic_speech):
         basic_speech.engine = mock_engine
         basic_speech.phrase_provider = MagicMock()
         basic_speech.phrase_provider.get_phrase.side_effect = Exception("fail")
-        basic_speech.activate(1.0)  # Should log error, not raise
+        # This should log an error, and re-raise the exception
+        with pytest.raises(Exception, match="fail"):
+            basic_speech.activate(1.0)
+        basic_speech.phrase_provider.get_phrase.assert_called_once()
 
 
 def test_cleanup_error(monkeypatch, basic_speech):
@@ -193,3 +200,13 @@ def test_voice_fallback_when_not_found(monkeypatch):
     voice_id = speech._select_voice()
     assert voice_id == "en_US_voice"  # Should fall back to available English voice
     mock_engine.setProperty.assert_called_with("voice", voice_id)
+
+
+def test_setup_error(monkeypatch, basic_speech):
+    """Test that setup errors are properly reraised."""
+    with (
+        patch("src.deterrent.speech_deterrent.pyttsx3.init") as mock_init,
+        pytest.raises(Exception, match="init failed"),
+    ):
+        mock_init.side_effect = Exception("init failed")
+        basic_speech.setup()  # Should reraise the exception

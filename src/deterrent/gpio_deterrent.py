@@ -9,8 +9,10 @@ try:
     import time
 
     IS_PI = True
+    logger.debug("Running on Pi")
 except ImportError:
     IS_PI = False
+    logger.debug("Not running on Pi")
 
 PIN = 17  # GPIO pin
 

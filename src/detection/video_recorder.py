@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 from collections import deque
 from typing import Optional, Deque, Tuple, Dict, Any
+import traceback
 
 import cv2
 import numpy as np
@@ -146,5 +147,7 @@ class VideoRecorder:
             )
         except Exception as e:
             logger.error(f"Error saving video: {str(e)}")
+            logger.debug(traceback.format_exc())
+            raise
         finally:
             out.release()

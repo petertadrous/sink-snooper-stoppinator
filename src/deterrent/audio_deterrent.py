@@ -27,11 +27,13 @@ class AudioDeterrent(Deterrent):
         try:
             play(audio)
         except KeyboardInterrupt:
-            # Do nothing
-            pass
+            self.cleanup()
+            raise
         except Exception as e:
             logger.error(f"Playback failed: {e}")
             logger.debug(traceback.format_exc())
+            self.cleanup()
+            raise
 
     def activate(self, duration: float) -> None:
         if self.audio_name == "gunshots":
