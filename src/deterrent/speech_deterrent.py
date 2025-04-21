@@ -86,8 +86,13 @@ class SpeechDeterrent(Deterrent):
                     return voice.id
 
         # Fall back to finding any English voice if specified voice not found
+        en_codes = set(["en_us", "en-us", "en_gb", "en-gb", "en"])
         english_voices = [
-            v for v in voices if "en_US" in v.languages or "en-US" in v.languages
+            v
+            for v in voices
+            if en_codes.intersection(
+                set([str.lower(lang) for lang in v.languages])  # type: ignore
+            )
         ]
 
         if not english_voices:
