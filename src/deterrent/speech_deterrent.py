@@ -91,6 +91,9 @@ class SpeechDeterrent(Deterrent):
         ]
 
         if not english_voices:
+            logger.error("No suitable English voices found. Available voices:")
+            for voice in voices:
+                logger.error(f" - {voice.id} ({voice.name})")
             raise RuntimeError("No suitable English voices found")
 
         selected_voice = english_voices[0]
