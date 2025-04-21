@@ -1,4 +1,4 @@
-CAMERA_INDEX: int = 1
+CAMERA_INDEX: int = 0
 INTERESTED_CLASSES: list[str] = [
     "cat",
     "dog",
