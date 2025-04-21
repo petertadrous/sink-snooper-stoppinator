@@ -13,7 +13,7 @@ FREQUENCY: float = 0.1  # Seconds
 PREPROCESS_MODE = "pad"
 DETECTION_HOLD_TIME: float = 1.0
 # Options: "gpio", "gunshots", "speech", "llm"
-DETERRENT_TYPE: str = "speech"
+DETERRENT_TYPE: str = "gpio"
 
 # Video recording settings
 VIDEO_PRE_DETECTION_BUFFER: float = 3.0  # Seconds of video to save before detection
