@@ -1,4 +1,5 @@
 import threading
+import time
 from typing import Optional
 
 from src.deterrent._deterrent import Deterrent
@@ -6,7 +7,6 @@ from src.utils.logger import logger
 
 try:
     import RPi.GPIO as GPIO  # type: ignore
-    import time
 
     IS_PI = True
     logger.debug("Running on Pi")
