@@ -15,9 +15,13 @@ dependencies = [
     "pre-commit>=4.2.0",
     "pydub>=0.25.1",
     "pyttsx3>=2.98",
-    "rpi-gpio>=0.7.1",
     "simpleaudio>=1.0.4",
     "ultralytics>=8.3.23",
+]
+
+[project.optional-dependencies]
+pi = [
+    "rpi-gpio>=0.7.1 ; sys_platform == 'linux'",
 ]
 
 [dependency-groups]
